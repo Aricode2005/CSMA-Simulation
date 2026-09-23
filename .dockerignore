@@ -1,0 +1,12 @@
+# Ignore the same files as .gitignore
+.git
+.gitignore
+*.class
+__pycache__/
+*.py[cod]
+venv/
+env/
+.idea/
+.vscode/
+*.csv
+*.png

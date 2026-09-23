@@ -161,8 +161,10 @@ async def get_static(filename: str):
 
 if __name__ == "__main__":
     import uvicorn
+    # Render provides the port via the PORT environment variable
+    port = int(os.environ.get("PORT", 8080))
     print("=" * 60)
     print("  CSMA/CD Network Simulator - Web Server")
-    print("  Open browser: http://localhost:8080")
+    print(f"  Listening on http://0.0.0.0:{port}")
     print("=" * 60)
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    uvicorn.run(app, host="0.0.0.0", port=port)
