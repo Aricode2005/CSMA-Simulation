@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSMA/CD Network Simulator</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root { --dark-bg: #0d1117; --card-bg: #161b22; --border: #30363d; --green: #3fb950; --red: #f85149; --blue: #58a6ff; --yellow: #d29922; --cyan: #39d2c0; --purple: #bc8cff; }
+        body { background: var(--dark-bg); color: #c9d1d9; font-family: 'Segoe UI', sans-serif; }
+        .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; }
+        .card-header { border-bottom: 1px solid var(--border); font-weight: 600; }
+        
+        /* Channel Wire Visualization */
+        .wire-container { position: relative; padding: 30px 0; margin: 20px 0; }
+        .wire { height: 6px; background: linear-gradient(90deg, #30363d, #484f58, #30363d); border-radius: 3px; position: relative; }
+        .wire.busy { background: linear-gradient(90deg, var(--yellow), #e3b341, var(--yellow)); box-shadow: 0 0 15px rgba(210, 153, 34, 0.5); animation: pulse 0.5s infinite; }
+        .wire.collision { background: linear-gradient(90deg, var(--red), #da3633, var(--red)); box-shadow: 0 0 20px rgba(248, 81, 73, 0.7); animation: shake 0.1s infinite; }
+        .wire.idle { background: linear-gradient(90deg, var(--green), #2ea043, var(--green)); box-shadow: 0 0 10px rgba(63, 185, 80, 0.3); }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.7; } }
+        @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-2px); } 75% { transform: translateX(2px); } }
+        
+        /* Station Nodes on Wire */
+        .station-node { position: absolute; top: -25px; width: 50px; height: 50px; border-radius: 50%; background: var(--card-bg); border: 3px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; transition: all 0.3s; z-index: 2; }
+        .station-node.idle { border-color: var(--green); color: var(--green); }
+        .station-node.transmitting { border-color: var(--blue); color: var(--blue); box-shadow: 0 0 15px rgba(88, 166, 255, 0.5); }
+        .station-node.collision { border-color: var(--red); color: var(--red); box-shadow: 0 0 15px rgba(248, 81, 73, 0.7); animation: shake 0.1s infinite; }
+        .station-node.backoff { border-color: var(--yellow); color: var(--yellow); }
+        .station-node.success { border-color: var(--green); color: var(--green); box-shadow: 0 0 15px rgba(63, 185, 80, 0.5); }
+        .station-node.received { border-color: var(--cyan); color: var(--cyan); box-shadow: 0 0 15px rgba(57, 210, 192, 0.5); }
+        .station-connector { position: absolute; top: 25px; width: 3px; height: 30px; background: var(--border); }
+        
+        /* Log Terminal */
+        .log-terminal { height: 200px; overflow-y: auto; background: #010409; color: var(--green); font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 12px; padding: 10px; border-radius: 8px; border: 1px solid var(--border); }
+        .log-terminal p { margin: 0; padding: 2px 0; border-bottom: 1px solid rgba(48, 54, 61, 0.3); }
+        .log-terminal .collision { color: var(--red); font-weight: bold; }
+        .log-terminal .success { color: var(--green); }
+        .log-terminal .transmitting { color: var(--blue); }
+        .log-terminal .backoff { color: var(--yellow); }
+        .log-terminal .received { color: var(--cyan); font-weight: bold; }
+        .log-terminal .aborting { color: var(--red); }
+        
+        /* Channel Log */
+        .channel-log { height: 150px; }
+        
+        /* Stats Badge */
+        .stat-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; margin: 2px; }
+        .stat-badge.green { background: rgba(63, 185, 80, 0.15); color: var(--green); border: 1px solid rgba(63, 185, 80, 0.3); }
+        .stat-badge.red { background: rgba(248, 81, 73, 0.15); color: var(--red); border: 1px solid rgba(248, 81, 73, 0.3); }
+        .stat-badge.blue { background: rgba(88, 166, 255, 0.15); color: var(--blue); border: 1px solid rgba(88, 166, 255, 0.3); }
+        
+        /* Status Indicator */
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+        .status-dot.online { background: var(--green); box-shadow: 0 0 6px var(--green); }
+        .status-dot.offline { background: #484f58; }
+        
+        .form-select, .form-control { background: var(--dark-bg); color: #c9d1d9; border-color: var(--border); }
+        .form-select:focus, .form-control:focus { background: var(--dark-bg); color: #c9d1d9; border-color: var(--blue); box-shadow: 0 0 0 0.2rem rgba(88, 166, 255, 0.25); }
+        .btn-glow { position: relative; overflow: hidden; }
+        .btn-glow::after { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%); opacity: 0; transition: opacity 0.3s; }
+        .btn-glow:hover::after { opacity: 1; }
+        
+        .hero-title { background: linear-gradient(135deg, var(--blue), var(--purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        /* Experiment Description Boxes */
+        .exp-desc { background: #1c2333; border-radius: 10px; padding: 20px; border-left: 5px solid var(--blue); }
+        .exp-desc.green-border { border-left-color: var(--green); }
+        .exp-desc h6 { font-weight: 700; font-size: 15px; margin-bottom: 8px; }
+        .exp-desc p { color: #e6edf3; font-size: 14px; line-height: 1.7; margin-bottom: 12px; }
+        .exp-desc p:last-child { margin-bottom: 0; }
+        .exp-desc code { background: rgba(88, 166, 255, 0.15); color: var(--blue); padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+        .exp-desc strong { color: #ffffff; }
+        
+        /* Data Tables */
+        .table-dark { --bs-table-bg: #0d1117; --bs-table-striped-bg: #161b22; --bs-table-border-color: #30363d; color: #e6edf3; }
+        .table-dark th { background: #1c2333; color: var(--blue); font-weight: 600; font-size: 13px; padding: 8px 12px; }
+        .table-dark td { font-size: 13px; padding: 6px 12px; }
+        
+        /* Section headers */
+        .section-label { color: #8b949e; font-size: 14px; font-weight: 600; }
+        .section-label code { background: rgba(139, 148, 158, 0.15); color: #8b949e; padding: 2px 6px; border-radius: 4px; }
+        .section-label i { margin-right: 4px; }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid px-4 py-3">
+    <!-- Header -->
+    <div class="text-center mb-4">
+        <h2 class="hero-title mb-1"><i class="bi bi-broadcast-pin"></i> CSMA/CD Network Simulator</h2>
+        <p class="text-muted small mb-0">Interactive Data-Link Layer Simulation &mdash; Real-Time Visualization</p>
+    </div>
+
+    <div class="row g-3">
+        <!-- LEFT: Admin Controls -->
+        <div class="col-lg-3">
+            <div class="card mb-3">
+                <div class="card-header text-white"><i class="bi bi-gear"></i> Network Configuration</div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label small text-muted">MAC Strategy</label>
+                        <select id="strategy" class="form-select form-select-sm">
+                            <option value="1-Persistent">1-Persistent CSMA</option>
+                            <option value="NON">Non-Persistent CSMA</option>
+                            <option value="P">p-Persistent CSMA</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small text-muted">Collision Detection</label>
+                        <select id="useCD" class="form-select form-select-sm">
+                            <option value="true">CSMA/CD (Abort on collision)</option>
+                            <option value="false">CSMA (Blind transmission)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="pValueGroup" style="display:none;">
+                        <label class="form-label small text-muted">p-Value (Probability)</label>
+                        <input type="range" id="pValue" class="form-range" min="0.01" max="1" step="0.01" value="0.3">
+                        <div class="text-center"><span class="stat-badge blue" id="pDisplay">p = 0.30</span></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small text-muted">Number of Stations</label>
+                        <input type="number" id="numStations" class="form-control form-control-sm" value="3" min="2" max="10">
+                    </div>
+                    <button id="btnStart" class="btn btn-success btn-sm w-100 btn-glow mb-2" onclick="startSimulation()">
+                        <i class="bi bi-play-fill"></i> Start Live Simulation
+                    </button>
+                    <button id="btnStop" class="btn btn-outline-danger btn-sm w-100" onclick="stopSimulation()" disabled>
+                        <i class="bi bi-stop-fill"></i> Stop
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Stats -->
+            <div class="card mb-3">
+                <div class="card-header text-white"><i class="bi bi-bar-chart"></i> Live Stats</div>
+                <div class="card-body text-center">
+                    <div><span class="stat-badge green" id="statSuccess">Success: 0</span></div>
+                    <div><span class="stat-badge red" id="statCollisions">Collisions: 0</span></div>
+                    <div><span class="stat-badge blue" id="statTick">Tick: 0</span></div>
+                </div>
+            </div>
+
+            <!-- Batch Analysis -->
+            <div class="card">
+                <div class="card-header text-white"><i class="bi bi-graph-up"></i> Batch Experiments</div>
+                <div class="card-body">
+                    <button class="btn btn-outline-info btn-sm w-100 mb-2" onclick="runBatch()" id="btnBatch">
+                        <i class="bi bi-lightning-fill"></i> Run All Experiments &amp; Generate Plots
+                    </button>
+                    <div id="batchStatus" class="small text-muted text-center"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- CENTER: Wire + Stations -->
+        <div class="col-lg-9">
+            <!-- Channel Wire -->
+            <div class="card mb-3">
+                <div class="card-header text-white d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-ethernet"></i> Shared Channel (Physical Wire)</span>
+                    <span id="channelStatus" class="stat-badge green">IDLE</span>
+                </div>
+                <div class="card-body">
+                    <div class="wire-container">
+                        <div id="wire" class="wire idle"></div>
+                        <div id="stationNodes"></div>
+                    </div>
+                    <div id="channelLog" class="log-terminal channel-log"></div>
+                </div>
+            </div>
+
+            <!-- Station Panels -->
+            <div class="row g-3" id="stationPanels">
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== EXPERIMENT RESULTS SECTION ==================== -->
+    <div id="experimentResults" class="mt-4">
+        <hr style="border-color: var(--border);">
+        <h3 class="hero-title text-center mb-3"><i class="bi bi-journal-richtext"></i> Experiment Results &amp; Analysis</h3>
+        
+        <div class="text-center mb-4">
+            <button class="btn btn-lg btn-info px-5 py-3 btn-glow" onclick="runBatch()" id="btnBatchMain" style="font-size: 18px;">
+                <i class="bi bi-lightning-fill"></i> Run All Experiments &amp; Generate Plots
+            </button>
+            <div id="batchStatusMain" class="mt-2" style="font-size: 14px; color: #8b949e;"></div>
+        </div>
+        
+        <!-- Batch Progress Log -->
+        <div class="card mb-4" id="batchLogCard" style="display:none;">
+            <div class="card-header text-white"><i class="bi bi-terminal"></i> Experiment Progress Log</div>
+            <div class="card-body p-0">
+                <div id="batchLog" class="log-terminal" style="height: 250px;"></div>
+            </div>
+        </div>
+
+        <!-- Experiment 1 -->
+        <div class="card mb-4">
+            <div class="card-header text-white" style="font-size: 16px;"><i class="bi bi-1-circle"></i> Experiment 1: Effect of Probability (p) on p-Persistent CSMA</div>
+            <div class="card-body">
+                <div class="exp-desc mb-4">
+                    <h6 style="color: var(--blue);"><i class="bi bi-bullseye"></i> Objective</h6>
+                    <p>Evaluate how the transmission probability <code>p</code> in p-Persistent CSMA affects network performance metrics: <strong>Throughput</strong>, <strong>Average Delay</strong>, and <strong>Collisions</strong>.</p>
+                    
+                    <h6 style="color: var(--blue);"><i class="bi bi-cpu"></i> Setup</h6>
+                    <p>A fixed network of <strong>N = 10 stations</strong> shares a single bus-topology channel. Each station has <strong>100 frames</strong> to transmit. The probability <code>p</code> is swept from <strong>0.01 to 1.0</strong>. When a station senses the channel idle, it transmits immediately with probability <code>p</code>, or defers for one time slot with probability <code>(1-p)</code>. If the channel becomes busy during the deferred slot, it is treated as a collision and the station enters Binary Exponential Backoff.</p>
+                    
+                    <h6 style="color: var(--blue);"><i class="bi bi-lightbulb"></i> Expected Observation</h6>
+                    <p>At very low <code>p</code>, throughput is low because stations defer too conservatively, wasting idle channel time. As <code>p</code> increases, throughput peaks at an optimal value. Beyond the optimum, throughput declines as <code>p &rarr; 1.0</code> because stations transmit too aggressively (behaving like 1-Persistent CSMA), causing excessive collisions. Note: <code>p = 1.0</code> is mathematically identical to 1-Persistent CSMA.</p>
+                </div>
+
+                <h6 class="section-label mt-4 mb-2"><i class="bi bi-table"></i> CSV Data &mdash; <code>experiment1_p_persistent.csv</code></h6>
+                <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                    <table class="table table-sm table-dark table-striped table-bordered" id="tableExp1">
+                        <thead><tr><td class="text-center" style="color: #8b949e; padding: 15px;" colspan="4"><i class="bi bi-arrow-left-circle"></i> Click "Run All Experiments" in the sidebar to generate data</td></tr></thead>
+                    </table>
+                </div>
+
+                <h6 class="section-label mt-4 mb-3"><i class="bi bi-bar-chart-line"></i> Performance Plots</h6>
+                <div class="row g-3">
+                    <div class="col-md-4"><img id="imgExp1Throughput" src="" class="img-fluid rounded border border-secondary" style="display:none;"></div>
+                    <div class="col-md-4"><img id="imgExp1Delay" src="" class="img-fluid rounded border border-secondary" style="display:none;"></div>
+                    <div class="col-md-4"><img id="imgExp1Collisions" src="" class="img-fluid rounded border border-secondary" style="display:none;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Experiment 2 -->
+        <div class="card mb-4">
+            <div class="card-header text-white" style="font-size: 16px;"><i class="bi bi-2-circle"></i> Experiment 2: Comparing All CSMA Strategies Under Increasing Load</div>
+            <div class="card-body">
+                <div class="exp-desc green-border mb-4">
+                    <h6 style="color: var(--green);"><i class="bi bi-bullseye"></i> Objective</h6>
+                    <p>Compare the performance of all four MAC strategies &mdash; <strong>Non-Persistent</strong>, <strong>1-Persistent</strong>, <strong>p-Persistent (p=0.1)</strong>, and <strong>CSMA/CD</strong> &mdash; as the number of competing stations on the shared bus increases from 2 to 30.</p>
+                    
+                    <h6 style="color: var(--green);"><i class="bi bi-cpu"></i> Setup</h6>
+                    <p>The number of stations <strong>N</strong> is varied across values: <strong>2, 5, 10, 15, 20, 25, 30</strong>. Each station sends <strong>100 frames</strong>. The experiment is repeated for each of the four strategies. CSMA/CD uses 1-Persistent carrier sensing combined with early collision detection and abort (transmitting a JAM signal for 2 slots upon detection), followed by Binary Exponential Backoff with K<sub>max</sub> = 15.</p>
+                    
+                    <h6 style="color: var(--green);"><i class="bi bi-lightbulb"></i> Expected Observation</h6>
+                    <p><strong>Non-Persistent CSMA</strong> yields the highest throughput under heavy load because stations back off for a random duration when the channel is busy, naturally staggering retransmission attempts and reducing collision probability. <strong>1-Persistent CSMA</strong> is the most aggressive strategy and causes the most collisions as N grows, since all waiting stations transmit simultaneously the instant the channel becomes idle. <strong>CSMA/CD</strong> dramatically reduces wasted transmission time by aborting collisions early (within 1-2 slots) instead of blindly transmitting for the full 20-slot frame duration, yielding significantly better throughput than pure 1-Persistent CSMA. <strong>p-Persistent CSMA</strong> performance falls between Non-Persistent and 1-Persistent, depending on the chosen <code>p</code> value.</p>
+                </div>
+
+                <h6 class="section-label mt-4 mb-2"><i class="bi bi-table"></i> CSV Data &mdash; <code>experiment2_varying_N.csv</code></h6>
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-sm table-dark table-striped table-bordered" id="tableExp2">
+                        <thead><tr><td class="text-center" style="color: #8b949e; padding: 15px;" colspan="5"><i class="bi bi-arrow-left-circle"></i> Click "Run All Experiments" in the sidebar to generate data</td></tr></thead>
+                    </table>
+                </div>
+
+                <h6 class="section-label mt-4 mb-3"><i class="bi bi-bar-chart-line"></i> Performance Plots</h6>
+                <div class="row g-3">
+                    <div class="col-md-4"><img id="imgExp2Throughput" src="" class="img-fluid rounded border border-secondary" style="display:none;"></div>
+                    <div class="col-md-4"><img id="imgExp2Delay" src="" class="img-fluid rounded border border-secondary" style="display:none;"></div>
+                    <div class="col-md-4"><img id="imgExp2Collisions" src="" class="img-fluid rounded border border-secondary" style="display:none;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    let ws = null;
+    let stats = { success: 0, collisions: 0, tick: 0 };
+    let stationStates = {};
+    let running = false;
+
+    // Show/hide p-value slider
+    document.getElementById('strategy').addEventListener('change', function() {
+        document.getElementById('pValueGroup').style.display = this.value === 'P' ? 'block' : 'none';
+    });
+    document.getElementById('pValue').addEventListener('input', function() {
+        document.getElementById('pDisplay').textContent = 'p = ' + parseFloat(this.value).toFixed(2);
+    });
+
+    function createStationPanels(n) {
+        const panels = document.getElementById('stationPanels');
+        const nodes = document.getElementById('stationNodes');
+        panels.innerHTML = '';
+        nodes.innerHTML = '';
+        stationStates = {};
+        
+        const colors = ['#58a6ff', '#3fb950', '#d29922', '#f85149', '#bc8cff', '#39d2c0', '#f0883e', '#a5d6ff', '#7ee787', '#d2a8ff'];
+        
+        for (let i = 0; i < n; i++) {
+            const macId = 'MAC-' + i;
+            stationStates[macId] = 'idle';
+            
+            // Station panel
+            const colSize = n <= 3 ? 4 : (n <= 6 ? 4 : 3);
+            panels.innerHTML += `
+            <div class="col-lg-${colSize} col-md-6">
+                <div class="card" id="panel-${i}">
+                    <div class="card-header d-flex justify-content-between align-items-center" style="color: ${colors[i % colors.length]};">
+                        <span><i class="bi bi-pc-display"></i> Station ${macId}</span>
+                        <span class="stat-badge green" id="state-${i}">IDLE</span>
+                    </div>
+                    <div class="card-body p-2">
+                        <div id="log-${i}" class="log-terminal"></div>
+                    </div>
+                </div>
+            </div>`;
+            
+            // Node on the wire
+            const leftPct = ((i + 1) / (n + 1)) * 100;
+            nodes.innerHTML += `
+                <div style="position:absolute; left:${leftPct}%; transform: translateX(-50%);">
+                    <div class="station-connector" style="left: 24px;"></div>
+                    <div class="station-node idle" id="node-${i}">${macId.replace('MAC-','S')}</div>
+                </div>`;
+        }
+    }
+
+    function connectWebSocket() {
+        if (ws) ws.close();
+        ws = new WebSocket("ws://" + location.host + "/ws-simulation");
+        
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            
+            if (data.type === 'CHANNEL') {
+                handleChannelEvent(data);
+            } else if (data.type === 'STATION') {
+                handleStationEvent(data);
+            } else if (data.type === 'BATCH_LOG') {
+                handleBatchLog(data.msg, false);
+            } else if (data.type === 'BATCH_DONE') {
+                handleBatchLog(data.msg, true);
+                onBatchComplete();
+            }
+        };
+        
+        ws.onclose = () => {
+            if (running) {
+                setTimeout(connectWebSocket, 1000);
+            }
+        };
+    }
+    
+    function handleChannelEvent(data) {
+        const wire = document.getElementById('wire');
+        const statusBadge = document.getElementById('channelStatus');
+        const log = document.getElementById('channelLog');
+        
+        wire.className = 'wire ' + data.state.toLowerCase();
+        
+        if (data.state === 'BUSY') {
+            statusBadge.className = 'stat-badge blue';
+            statusBadge.textContent = 'BUSY';
+        } else if (data.state === 'COLLISION') {
+            statusBadge.className = 'stat-badge red';
+            statusBadge.textContent = 'COLLISION!';
+            stats.collisions++;
+            document.getElementById('statCollisions').textContent = 'Collisions: ' + stats.collisions;
+        } else if (data.state === 'IDLE') {
+            statusBadge.className = 'stat-badge green';
+            statusBadge.textContent = 'IDLE';
+        } else if (data.state === 'FINISHED') {
+            statusBadge.className = 'stat-badge green';
+            statusBadge.textContent = 'FINISHED';
+            running = false;
+            document.getElementById('btnStart').disabled = false;
+            document.getElementById('btnStop').disabled = true;
+        }
+        
+        const p = document.createElement('p');
+        p.className = data.state.toLowerCase();
+        const time = new Date().toLocaleTimeString();
+        p.textContent = `[${time}] ${data.msg}`;
+        log.appendChild(p);
+        log.scrollTop = log.scrollHeight;
+    }
+    
+    function handleStationEvent(data) {
+        // Extract station index from MAC-X
+        const idx = parseInt(data.id.replace('MAC-', ''));
+        const logDiv = document.getElementById('log-' + idx);
+        const stateDiv = document.getElementById('state-' + idx);
+        const nodeDiv = document.getElementById('node-' + idx);
+        
+        if (!logDiv) return;
+        
+        // Update station state badge
+        const stateMap = {
+            'TRANSMITTING': { cls: 'blue', label: 'TX', nodeCls: 'transmitting' },
+            'COLLISION': { cls: 'red', label: 'COLLIDED', nodeCls: 'collision' },
+            'ABORTING': { cls: 'red', label: 'ABORTING', nodeCls: 'collision' },
+            'SUCCESS': { cls: 'green', label: 'SUCCESS', nodeCls: 'success' },
+            'BACKOFF': { cls: 'blue', label: 'BACKOFF', nodeCls: 'backoff' },
+            'RECEIVED': { cls: 'green', label: 'RECEIVED', nodeCls: 'received' },
+        };
+        
+        const s = stateMap[data.state] || { cls: 'blue', label: data.state, nodeCls: 'idle' };
+        if (stateDiv) {
+            stateDiv.className = 'stat-badge ' + s.cls;
+            stateDiv.textContent = s.label;
+        }
+        if (nodeDiv) {
+            nodeDiv.className = 'station-node ' + s.nodeCls;
+        }
+        
+        if (data.state === 'SUCCESS') {
+            stats.success++;
+            document.getElementById('statSuccess').textContent = 'Success: ' + stats.success;
+            // Reset to idle after 500ms
+            setTimeout(() => {
+                if (stateDiv) { stateDiv.className = 'stat-badge green'; stateDiv.textContent = 'IDLE'; }
+                if (nodeDiv) { nodeDiv.className = 'station-node idle'; }
+            }, 500);
+        }
+        
+        // Append log
+        const p = document.createElement('p');
+        p.className = data.state.toLowerCase();
+        const time = new Date().toLocaleTimeString();
+        p.textContent = `[${time}] ${data.msg}`;
+        logDiv.appendChild(p);
+        logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    function startSimulation() {
+        const n = parseInt(document.getElementById('numStations').value);
+        const strategy = document.getElementById('strategy').value;
+        const useCD = document.getElementById('useCD').value === 'true';
+        const p = parseFloat(document.getElementById('pValue').value);
+        
+        // Reset
+        stats = { success: 0, collisions: 0, tick: 0 };
+        document.getElementById('statSuccess').textContent = 'Success: 0';
+        document.getElementById('statCollisions').textContent = 'Collisions: 0';
+        document.getElementById('channelLog').innerHTML = '';
+        
+        // Create UI
+        createStationPanels(n);
+        connectWebSocket();
+        
+        running = true;
+        document.getElementById('btnStart').disabled = true;
+        document.getElementById('btnStop').disabled = false;
+        
+        // Wait for WebSocket to connect, then fire
+        setTimeout(() => {
+            fetch('/api/start-live', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ strategy, useCD, p, numStations: n })
+            }).then(r => r.json()).then(data => {
+                const log = document.getElementById('channelLog');
+                const p2 = document.createElement('p');
+                p2.className = 'success';
+                p2.textContent = '[SYSTEM] ' + data.message;
+                log.appendChild(p2);
+            }).catch(err => alert('Error: ' + err));
+        }, 500);
+    }
+    
+    function stopSimulation() {
+        running = false;
+        if (ws) ws.close();
+        document.getElementById('btnStart').disabled = false;
+        document.getElementById('btnStop').disabled = true;
+    }
+    
+    // Auto connect WebSocket on page load for logs
+    window.addEventListener('DOMContentLoaded', () => {
+        connectWebSocket();
+    });
+
+    function handleBatchLog(msg, isDone) {
+        const logCard = document.getElementById('batchLogCard');
+        const batchLog = document.getElementById('batchLog');
+        if (logCard) logCard.style.display = 'block';
+        if (batchLog) {
+            const p = document.createElement('p');
+            p.className = isDone ? 'success' : 'transmitting';
+            const time = new Date().toLocaleTimeString();
+            p.textContent = `[${time}] ${msg}`;
+            batchLog.appendChild(p);
+            batchLog.scrollTop = batchLog.scrollHeight;
+        }
+    }
+
+    function onBatchComplete() {
+        const btn1 = document.getElementById('btnBatch');
+        const btn2 = document.getElementById('btnBatchMain');
+        const status1 = document.getElementById('batchStatus');
+        const status2 = document.getElementById('batchStatusMain');
+        
+        if (btn1) btn1.disabled = false;
+        if (btn2) btn2.disabled = false;
+        
+        const okMsg = '<span style="color: var(--green);">&#10003; All experiments finished! Results loaded below.</span>';
+        if (status1) status1.innerHTML = okMsg;
+        if (status2) status2.innerHTML = okMsg;
+        
+        const t = Date.now();
+        
+        // Show Experiment 1 plots
+        showImage('imgExp1Throughput', '/api/plot/exp1_throughput?t=' + t);
+        showImage('imgExp1Delay', '/api/plot/exp1_delay?t=' + t);
+        showImage('imgExp1Collisions', '/api/plot/exp1_collisions?t=' + t);
+        
+        // Show Experiment 2 plots
+        showImage('imgExp2Throughput', '/api/plot/exp2_throughput?t=' + t);
+        showImage('imgExp2Delay', '/api/plot/exp2_delay?t=' + t);
+        showImage('imgExp2Collisions', '/api/plot/exp2_collisions?t=' + t);
+        
+        // Load CSV tables
+        loadCSVTable('experiment1_p_persistent', 'tableExp1');
+        loadCSVTable('experiment2_varying_N', 'tableExp2');
+    }
+    
+    function runBatch() {
+        const btn1 = document.getElementById('btnBatch');
+        const btn2 = document.getElementById('btnBatchMain');
+        const status1 = document.getElementById('batchStatus');
+        const status2 = document.getElementById('batchStatusMain');
+        
+        if (btn1) btn1.disabled = true;
+        if (btn2) btn2.disabled = true;
+        
+        const spinMsg = '<span class="spinner-border spinner-border-sm me-2"></span> Running batch experiments... Live logs streaming below.';
+        if (status1) status1.innerHTML = spinMsg;
+        if (status2) status2.innerHTML = spinMsg;
+        
+        // Reset and show progress terminal
+        const batchLog = document.getElementById('batchLog');
+        if (batchLog) batchLog.innerHTML = '';
+        const logCard = document.getElementById('batchLogCard');
+        if (logCard) logCard.style.display = 'block';
+        logCard.scrollIntoView({ behavior: 'smooth' });
+
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+            connectWebSocket();
+        }
+        
+        fetch('/api/run-batch', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                if (btn1) btn1.disabled = false;
+                if (btn2) btn2.disabled = false;
+                const errMsg = 'Error: ' + data.error;
+                if (status1) status1.textContent = errMsg;
+                if (status2) status2.textContent = errMsg;
+            }
+        }).catch(err => {
+            if (btn1) btn1.disabled = false;
+            if (btn2) btn2.disabled = false;
+            const errMsg = 'Error: ' + err;
+            if (status1) status1.textContent = errMsg;
+            if (status2) status2.textContent = errMsg;
+        });
+    }
+    
+    function showImage(id, src) {
+        const img = document.getElementById(id);
+        img.src = src;
+        img.style.display = 'block';
+    }
+    
+    function loadCSVTable(csvName, tableId) {
+        fetch('/api/csv/' + csvName)
+        .then(r => r.json())
+        .then(result => {
+            if (result.error) return;
+            const table = document.getElementById(tableId);
+            let html = '<thead><tr>';
+            result.columns.forEach(col => { html += '<th style="color: var(--blue);">' + col + '</th>'; });
+            html += '</tr></thead><tbody>';
+            result.data.forEach(row => {
+                html += '<tr>';
+                result.columns.forEach(col => { html += '<td>' + row[col] + '</td>'; });
+                html += '</tr>';
+            });
+            html += '</tbody>';
+            table.innerHTML = html;
+        }).catch(() => {});
+    }
+</script>
+</body>
+</html>

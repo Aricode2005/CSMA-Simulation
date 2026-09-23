@@ -1,0 +1,22 @@
+# Java
+*.class
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+
+# Simulation Outputs
+*.csv
+*.png
+
+# OS Files
+.DS_Store
+Thumbs.db

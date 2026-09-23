@@ -1,0 +1,1 @@
+This is a sample payload chunk of text that will be transmitted over the CSMA network. It simulates real application data being sent in frames across the shared medium. Each station will break this text into 46-byte chunks and wrap them in Ethernet-style frames with source address, destination address, sequence number, and CRC checksum.
