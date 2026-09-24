@@ -14,11 +14,13 @@ public class Simulator {
 
     static class Result {
         long collisions;
+        long undetectedCollisions;
         double avgDelay;
         double throughput;
 
-        public Result(long c, double d, double t) {
+        public Result(long c, long uc, double d, double t) {
             collisions = c;
+            undetectedCollisions = uc;
             avgDelay = d;
             throughput = t;
         }
@@ -50,16 +52,22 @@ public class Simulator {
         long totalTime = clock.getTick();
         int totalSuccessful = 0;
         long totalDelay = 0;
+        long totalUndetected = 0;
         
         for (Station s : stations) {
             totalSuccessful += s.successfulTransmissions;
             totalDelay += s.totalDelay;
+            totalUndetected += s.undetectedCollisions;
         }
 
-        double avgDelay = totalSuccessful > 0 ? (double) totalDelay / totalSuccessful : 0;
-        double throughput = totalTime > 0 ? ((double) totalSuccessful * Station.TRANSMISSION_TIME) / totalTime : 0;
+        // Frames that had undetected collisions are actually corrupt, so they aren't true successes.
+        int validSuccess = totalSuccessful - (int)totalUndetected;
+        if (validSuccess < 0) validSuccess = 0;
 
-        return new Result(channel.getCollisionCount(), avgDelay, throughput);
+        double avgDelay = totalSuccessful > 0 ? (double) totalDelay / totalSuccessful : 0;
+        double throughput = totalTime > 0 ? ((double) validSuccess * Station.TRANSMISSION_TIME) / totalTime : 0;
+
+        return new Result(channel.getCollisionCount(), totalUndetected, avgDelay, throughput);
     }
     
     private static int readFramesFromFile(String filename) {
@@ -116,6 +124,22 @@ public class Simulator {
                     out.printf("%s,%d,%d,%.2f,%.4f\n", strategyNames[i], n, res.collisions, res.avgDelay, res.throughput);
                     System.out.printf("  N=%d -> Collisions: %d, Avg Delay: %.2f, Throughput: %.4f\n", n, res.collisions, res.avgDelay, res.throughput);
                 }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        System.out.println("\nRunning Experiment 3: Tfr vs Tp constraint...");
+        try (PrintWriter out = new PrintWriter(new FileWriter("experiment3_tfr_vs_tp.csv"))) {
+            out.println("Tfr,UndetectedCollisions,Throughput");
+            Station.PROPAGATION_DELAY = 10;
+            int[] tfrValues = {5, 10, 15, 18, 20, 22, 25, 30}; // 2*Tp = 20
+            MacStrategy csmaCd = new CsmaCdStrategy();
+            for (int tfr : tfrValues) {
+                Station.TRANSMISSION_TIME = tfr;
+                Result res = runExperiment(csmaCd, true, 10, frames);
+                out.printf("%d,%d,%.4f\n", tfr, res.undetectedCollisions, res.throughput);
+                System.out.printf("  Tfr=%d (2*Tp=20) -> Undetected Collisions: %d, Throughput: %.4f\n", tfr, res.undetectedCollisions, res.throughput);
             }
         } catch (IOException e) {
             e.printStackTrace();

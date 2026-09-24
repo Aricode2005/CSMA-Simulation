@@ -118,7 +118,45 @@ def plot_experiment2():
 
     print("Experiment 2 plots saved.")
 
+def plot_experiment3():
+    """Experiment 3: Validation of Tfr >= 2*Tp restriction.
+    Plots Undetected Collisions and Throughput as Tfr varies."""
+    try:
+        df = pd.read_csv('experiment3_tfr_vs_tp.csv')
+    except Exception:
+        print("experiment3_tfr_vs_tp.csv not found.")
+        return
+
+    # Undetected Collisions vs Tfr
+    fig, ax = plt.subplots(figsize=(9, 5))
+    ax.plot(df['Tfr'], df['UndetectedCollisions'], 'o-', color='#f85149', linewidth=2, markersize=8, label='Undetected Collisions')
+    ax.axvline(x=20, color='gray', linestyle='--', linewidth=2, label='Threshold (2*Tp = 20)')
+    ax.set_title('Experiment 3: Undetected Collisions vs. Frame Size ($T_{fr}$)', fontsize=13, fontweight='bold')
+    ax.set_xlabel('Frame Transmission Time ($T_{fr}$)', fontsize=11)
+    ax.set_ylabel('Count of Undetected Collisions', fontsize=11)
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    fig.savefig('exp3_undetected.png', dpi=150)
+    plt.close(fig)
+
+    # Throughput vs Tfr
+    fig, ax = plt.subplots(figsize=(9, 5))
+    ax.plot(df['Tfr'], df['Throughput'], 's-', color='#3fb950', linewidth=2, markersize=8, label='Effective Throughput')
+    ax.axvline(x=20, color='gray', linestyle='--', linewidth=2, label='Threshold (2*Tp = 20)')
+    ax.set_title('Experiment 3: Effective Throughput vs. Frame Size ($T_{fr}$)', fontsize=13, fontweight='bold')
+    ax.set_xlabel('Frame Transmission Time ($T_{fr}$)', fontsize=11)
+    ax.set_ylabel('Effective Throughput', fontsize=11)
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    fig.savefig('exp3_throughput.png', dpi=150)
+    plt.close(fig)
+    
+    print("Experiment 3 plots saved.")
+
 if __name__ == "__main__":
     plot_experiment1()
     plot_experiment2()
+    plot_experiment3()
     print("All plots generated successfully!")

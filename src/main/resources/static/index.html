@@ -271,6 +271,36 @@
                 </div>
             </div>
         </div>
+
+        <!-- Experiment 3 -->
+        <div class="card mb-4">
+            <div class="card-header text-white" style="font-size: 16px;"><i class="bi bi-3-circle"></i> Experiment 3: Validating Frame Size Constraint (Tfr &ge; 2*Tp)</div>
+            <div class="card-body">
+                <div class="exp-desc mb-4" style="border-left-color: var(--purple);">
+                    <h6 style="color: var(--purple);"><i class="bi bi-bullseye"></i> Objective</h6>
+                    <p>Demonstrate the fundamental rule of CSMA/CD: a station can only detect a collision if it is still transmitting when the collision signal propagates back to it. Therefore, the frame transmission time (<strong>T<sub>fr</sub></strong>) must be at least twice the maximum propagation delay (<strong>2 * T<sub>p</sub></strong>).</p>
+                    
+                    <h6 style="color: var(--purple);"><i class="bi bi-cpu"></i> Setup</h6>
+                    <p>CSMA/CD strategy is used with 10 stations. The propagation delay <strong>T<sub>p</sub></strong> is fixed at 10 slots (so <strong>2*T<sub>p</sub> = 20 slots</strong>). The frame transmission time <strong>T<sub>fr</sub></strong> is varied across: <strong>5, 10, 15, 18, 20, 22, 25, 30</strong> slots. We measure the number of <em>Undetected Collisions</em> and the <em>Effective Throughput</em>.</p>
+                    
+                    <h6 style="color: var(--purple);"><i class="bi bi-lightbulb"></i> Expected Observation</h6>
+                    <p>When <strong>T<sub>fr</sub> &lt; 20</strong>, the station finishes transmitting before the collision signal reaches it. The station assumes the frame was sent successfully, but it was actually corrupted, leading to a high count of Undetected Collisions and a severely degraded Effective Throughput. When <strong>T<sub>fr</sub> &ge; 20</strong>, all collisions are detected and properly retransmitted via backoff, dropping Undetected Collisions to 0 and stabilizing Throughput.</p>
+                </div>
+
+                <h6 class="section-label mt-4 mb-2"><i class="bi bi-table"></i> CSV Data &mdash; <code>experiment3_tfr_vs_tp.csv</code></h6>
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-sm table-dark table-striped table-bordered" id="tableExp3">
+                        <thead><tr><td class="text-center" style="color: #8b949e; padding: 15px;" colspan="3"><i class="bi bi-arrow-left-circle"></i> Click "Run All Experiments" in the sidebar to generate data</td></tr></thead>
+                    </table>
+                </div>
+
+                <h6 class="section-label mt-4 mb-3"><i class="bi bi-bar-chart-line"></i> Performance Plots</h6>
+                <div class="row g-3 justify-content-center">
+                    <div class="col-md-5"><img id="imgExp3Undetected" src="" class="img-fluid rounded border border-secondary" style="display:none;"></div>
+                    <div class="col-md-5"><img id="imgExp3Throughput" src="" class="img-fluid rounded border border-secondary" style="display:none;"></div>
+                </div>
+            </div>
+        </div>
     </div>
 
 <script>
@@ -528,9 +558,14 @@
         showImage('imgExp2Delay', '/api/plot/exp2_delay?t=' + t);
         showImage('imgExp2Collisions', '/api/plot/exp2_collisions?t=' + t);
         
+        // Show Experiment 3 plots
+        showImage('imgExp3Undetected', '/api/plot/exp3_undetected?t=' + t);
+        showImage('imgExp3Throughput', '/api/plot/exp3_throughput?t=' + t);
+        
         // Load CSV tables
         loadCSVTable('experiment1_p_persistent', 'tableExp1');
         loadCSVTable('experiment2_varying_N', 'tableExp2');
+        loadCSVTable('experiment3_tfr_vs_tp', 'tableExp3');
     }
     
     function runBatch() {

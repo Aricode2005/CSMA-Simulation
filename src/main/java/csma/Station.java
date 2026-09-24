@@ -22,8 +22,10 @@ public class Station extends Thread {
     
     private List<Frame> generatedFrames = new ArrayList<>();
 
-    public static final int TRANSMISSION_TIME = 20; 
-    public static final int PROPAGATION_DELAY = 1; 
+    public static int TRANSMISSION_TIME = 20; 
+    public static int PROPAGATION_DELAY = 10; 
+    
+    public int undetectedCollisions = 0; 
     
     private final Random random = new Random();
 
@@ -148,6 +150,12 @@ public class Station extends Thread {
         log("TRANSMITTING", "Transmitting Frame " + frame.getSeqNo() + " (With CD)");
         channel.startTx(frame);
         boolean collided = false;
+        boolean detected = false;
+        
+        // Simulating the vulnerability window.
+        // Worst-case collision requires 2 * PROPAGATION_DELAY ticks to reach the sender.
+        int ticksToDetect = 2 * PROPAGATION_DELAY - 1;
+        
         for (int i = 0; i < TRANSMISSION_TIME; i++) {
             clock.waitForNextTick();
             
@@ -155,20 +163,35 @@ public class Station extends Thread {
             int signalsOnWire = channel.getTransmittingCount();
             if (signalsOnWire > 1) {
                 collided = true;
-                log("ABORTING", "Voltage spike detected! Expected 1 TX signal, but sensed " + signalsOnWire + " signals. Aborting.");
-                break; 
+                // If we are still transmitting when the signal reaches us, we detect it
+                if (i >= ticksToDetect) {
+                    detected = true;
+                    log("ABORTING", "Voltage spike detected! Expected 1 TX signal, but sensed " + signalsOnWire + " signals. Aborting.");
+                    break; 
+                }
             }
         }
+        
         if (collided) {
-            channel.startJamming();
-            log("JAMMING", "Broadcasting 48-bit JAM signal to ensure all stations detect collision.");
-            for (int i = 0; i < 2; i++) {
-                clock.waitForNextTick();
+            if (detected) {
+                channel.startJamming();
+                log("JAMMING", "Broadcasting 48-bit JAM signal to ensure all stations detect collision.");
+                for (int i = 0; i < 2; i++) {
+                    clock.waitForNextTick();
+                }
+                channel.stopJamming();
+            } else {
+                log("ERROR", "Undetected Collision! Frame corrupted because Tfr < 2*Tp. Station failed to detect.");
+                undetectedCollisions++;
+                // The station *thinks* it succeeded, so it moves on.
+                // But the channel knows it was corrupted.
+                channel.stopTx();
+                return true; 
             }
-            channel.stopJamming();
         } else {
             log("SUCCESS", "Frame " + frame.getSeqNo() + " sent successfully!");
         }
+        
         channel.stopTx();
         return !collided;
     }
