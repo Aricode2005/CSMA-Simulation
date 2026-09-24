@@ -107,10 +107,13 @@ public class Simulator {
         System.out.println("\nSimulation completed. Results saved to CSV files.");
     }
 
-    private static void setupVisualBatch(int N) {
-        if (SimClock.isVisualBatchMode) {
+    private static void setupVisualBatch(int N, boolean isFirst) {
+        if (isFirst) {
+            SimClock.isVisualBatchMode = true;
             System.out.println("[WS] {\"type\": \"SETUP\", \"numStations\": " + N + "}");
             System.out.flush();
+        } else {
+            SimClock.isVisualBatchMode = false;
         }
     }
 
@@ -121,8 +124,11 @@ public class Simulator {
             out.println("p,Collisions,AvgDelay,Throughput");
             int fixedN = 10;
             double[] pValues = {0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0};
-            setupVisualBatch(fixedN);
+            
+            boolean isFirst = true;
             for (double p : pValues) {
+                setupVisualBatch(fixedN, isFirst);
+                isFirst = false;
                 Result res = runExperiment(new PPersistentStrategy(p), false, fixedN, frames);
                 out.printf("%.2f,%d,%.2f,%.4f\n", p, res.collisions, res.avgDelay, res.throughput);
                 System.out.printf("p=%.2f -> Collisions: %d, Avg Delay: %.2f, Throughput: %.4f\n", p, res.collisions, res.avgDelay, res.throughput);
@@ -147,10 +153,12 @@ public class Simulator {
 
         try (PrintWriter out = new PrintWriter(new FileWriter("experiment2_varying_N.csv"))) {
             out.println("Strategy,N,Collisions,AvgDelay,Throughput");
+            boolean isFirst = true;
             for (int i = 0; i < strategies.length; i++) {
                 System.out.println("Testing strategy: " + strategyNames[i]);
                 for (int n : nValues) {
-                    setupVisualBatch(n);
+                    setupVisualBatch(n, isFirst);
+                    isFirst = false;
                     Result res = runExperiment(strategies[i], useCDFlags[i], n, frames);
                     out.printf("%s,%d,%d,%.2f,%.4f\n", strategyNames[i], n, res.collisions, res.avgDelay, res.throughput);
                     System.out.printf("  N=%d -> Collisions: %d, Avg Delay: %.2f, Throughput: %.4f\n", n, res.collisions, res.avgDelay, res.throughput);
@@ -169,8 +177,11 @@ public class Simulator {
             Station.PROPAGATION_DELAY = 10;
             int[] tfrValues = {5, 10, 15, 18, 20, 22, 25, 30}; // 2*Tp = 20
             MacStrategy csmaCd = new CsmaCdStrategy();
-            setupVisualBatch(10);
+            
+            boolean isFirst = true;
             for (int tfr : tfrValues) {
+                setupVisualBatch(10, isFirst);
+                isFirst = false;
                 Station.TRANSMISSION_TIME = tfr;
                 Result res = runExperiment(csmaCd, true, 10, frames);
                 out.printf("%d,%d,%.4f\n", tfr, res.undetectedCollisions, res.throughput);

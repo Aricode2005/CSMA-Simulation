@@ -38,11 +38,14 @@ public class SimClock {
         waitingThreads = 0;
         
         // If we are showing this visually on the Web UI
-        if (isLiveMode || isVisualBatchMode) {
+        if (isLiveMode) {
             System.out.println("[WS] {\"type\": \"TICK\", \"tick\": " + tick + "}");
             System.out.flush();
-            if (isLiveMode) {
-                try { Thread.sleep(liveSpeedMs); } catch (InterruptedException e) {}
+            try { Thread.sleep(liveSpeedMs); } catch (InterruptedException e) {}
+        } else if (isVisualBatchMode) {
+            if (tick % 50 == 0) { // throttle tick updates for batch
+                System.out.println("[WS] {\"type\": \"TICK\", \"tick\": " + tick + "}");
+                System.out.flush();
             }
         }
         
