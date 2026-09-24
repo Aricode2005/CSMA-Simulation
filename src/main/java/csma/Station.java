@@ -149,9 +149,12 @@ public class Station extends Thread {
         boolean collided = false;
         for (int i = 0; i < TRANSMISSION_TIME; i++) {
             clock.waitForNextTick();
-            if (channel.isCollision()) {
+            
+            // hardware simulation: Listen while talking (Read back voltage from the wire)
+            int signalsOnWire = channel.getTransmittingCount();
+            if (signalsOnWire > 1) {
                 collided = true;
-                log("ABORTING", "Collision detected mid-transmission! Aborting and sending JAM signal.");
+                log("ABORTING", "Voltage spike detected! Expected 1 TX signal, but sensed " + signalsOnWire + " signals. Aborting.");
                 break; 
             }
         }

@@ -77,6 +77,11 @@ public class Channel {
         return txInCurrentPeriod > 1;
     }
     
+    // Simulates reading the physical voltage / signal count on the wire
+    public synchronized int getTransmittingCount() {
+        return transmittingCount;
+    }
+    
     public synchronized void startJamming() {
         if (jammingCount == 0) {
             if (SimClock.isLiveMode) {
