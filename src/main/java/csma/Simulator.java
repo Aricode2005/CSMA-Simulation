@@ -151,6 +151,7 @@ public class Simulator {
         Result res = runExperiment(strategy, useCD, numStations, 5);
         String metrics = String.format("Avg Delay: %.2f slots | Throughput: %.4f", res.avgDelay, res.throughput);
         System.out.println("[WS] {\"type\": \"CHANNEL\", \"state\": \"FINISHED\", \"msg\": \"Live simulation completed! " + metrics + "\"}");
+        System.out.flush();
         System.exit(0);
     }
 }

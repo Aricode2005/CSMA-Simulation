@@ -29,6 +29,7 @@ public class Channel {
             framesInTransit.clear();
             if (SimClock.isLiveMode) {
                 System.out.println("[WS] {\"type\": \"CHANNEL\", \"state\": \"BUSY\", \"msg\": \"Channel is now BUSY.\"}");
+                System.out.flush();
             }
         }
         transmittingCount++;
@@ -39,6 +40,7 @@ public class Channel {
             collisions++;
             if (SimClock.isLiveMode) {
                 System.out.println("[WS] {\"type\": \"CHANNEL\", \"state\": \"COLLISION\", \"msg\": \"COLLISION DETECTED on the wire!\"}");
+                System.out.flush();
             }
         }
     }
@@ -56,6 +58,7 @@ public class Channel {
             framesInTransit.clear();
             if (jammingCount == 0 && SimClock.isLiveMode) {
                 System.out.println("[WS] {\"type\": \"CHANNEL\", \"state\": \"IDLE\", \"msg\": \"Channel is now IDLE.\"}");
+                System.out.flush();
             }
         }
     }
@@ -86,6 +89,7 @@ public class Channel {
         if (jammingCount == 0) {
             if (SimClock.isLiveMode) {
                 System.out.println("[WS] {\"type\": \"CHANNEL\", \"state\": \"JAMMING\", \"msg\": \"High-voltage JAM SIGNAL broadcasting on the wire!\"}");
+                System.out.flush();
             }
         }
         jammingCount++;
@@ -96,6 +100,7 @@ public class Channel {
         if (jammingCount == 0 && transmittingCount == 0) {
             if (SimClock.isLiveMode) {
                 System.out.println("[WS] {\"type\": \"CHANNEL\", \"state\": \"IDLE\", \"msg\": \"Channel is now IDLE.\"}");
+                System.out.flush();
             }
         }
     }

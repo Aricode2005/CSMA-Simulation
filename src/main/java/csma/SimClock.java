@@ -39,6 +39,7 @@ public class SimClock {
         // If we are showing this visually on the Web UI, slow down time!
         if (isLiveMode) {
             System.out.println("[WS] {\"type\": \"TICK\", \"tick\": " + tick + "}");
+            System.out.flush();
             try { Thread.sleep(liveSpeedMs); } catch (InterruptedException e) {}
         }
         
