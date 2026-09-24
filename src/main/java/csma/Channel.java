@@ -5,6 +5,7 @@ import java.util.List;
 
 public class Channel {
     private int transmittingCount = 0;
+    private int jammingCount = 0;
     private int txInCurrentPeriod = 0;
     private long collisions = 0;
     private SimClock clock;
@@ -53,7 +54,7 @@ public class Channel {
             
             busyStartTime = -1;
             framesInTransit.clear();
-            if (SimClock.isLiveMode) {
+            if (jammingCount == 0 && SimClock.isLiveMode) {
                 System.out.println("[WS] {\"type\": \"CHANNEL\", \"state\": \"IDLE\", \"msg\": \"Channel is now IDLE.\"}");
             }
         }
@@ -68,12 +69,30 @@ public class Channel {
     }
 
     public synchronized boolean isIdle() {
-        if (transmittingCount == 0) return true;
+        if (transmittingCount == 0 && jammingCount == 0) return true;
         return clock.getTick() < busyStartTime + Station.PROPAGATION_DELAY;
     }
 
     public synchronized boolean isCollision() {
         return txInCurrentPeriod > 1;
+    }
+    
+    public synchronized void startJamming() {
+        if (jammingCount == 0) {
+            if (SimClock.isLiveMode) {
+                System.out.println("[WS] {\"type\": \"CHANNEL\", \"state\": \"JAMMING\", \"msg\": \"High-voltage JAM SIGNAL broadcasting on the wire!\"}");
+            }
+        }
+        jammingCount++;
+    }
+
+    public synchronized void stopJamming() {
+        jammingCount--;
+        if (jammingCount == 0 && transmittingCount == 0) {
+            if (SimClock.isLiveMode) {
+                System.out.println("[WS] {\"type\": \"CHANNEL\", \"state\": \"IDLE\", \"msg\": \"Channel is now IDLE.\"}");
+            }
+        }
     }
     
     public synchronized long getCollisionCount() { 

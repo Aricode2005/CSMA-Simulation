@@ -156,9 +156,12 @@ public class Station extends Thread {
             }
         }
         if (collided) {
+            channel.startJamming();
+            log("JAMMING", "Broadcasting 48-bit JAM signal to ensure all stations detect collision.");
             for (int i = 0; i < 2; i++) {
                 clock.waitForNextTick();
             }
+            channel.stopJamming();
         } else {
             log("SUCCESS", "Frame " + frame.getSeqNo() + " sent successfully!");
         }

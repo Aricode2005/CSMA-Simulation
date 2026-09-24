@@ -17,15 +17,18 @@
         .wire { height: 6px; background: linear-gradient(90deg, #30363d, #484f58, #30363d); border-radius: 3px; position: relative; }
         .wire.busy { background: linear-gradient(90deg, var(--yellow), #e3b341, var(--yellow)); box-shadow: 0 0 15px rgba(210, 153, 34, 0.5); animation: pulse 0.5s infinite; }
         .wire.collision { background: linear-gradient(90deg, var(--red), #da3633, var(--red)); box-shadow: 0 0 20px rgba(248, 81, 73, 0.7); animation: shake 0.1s infinite; }
+        .wire.jamming { background: linear-gradient(90deg, var(--purple), #ff55ff, var(--purple)); box-shadow: 0 0 25px rgba(188, 140, 255, 0.8); animation: strobe 0.1s infinite; }
         .wire.idle { background: linear-gradient(90deg, var(--green), #2ea043, var(--green)); box-shadow: 0 0 10px rgba(63, 185, 80, 0.3); }
         @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.7; } }
         @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-2px); } 75% { transform: translateX(2px); } }
+        @keyframes strobe { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
         
         /* Station Nodes on Wire */
         .station-node { position: absolute; top: -25px; width: 50px; height: 50px; border-radius: 50%; background: var(--card-bg); border: 3px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; transition: all 0.3s; z-index: 2; }
         .station-node.idle { border-color: var(--green); color: var(--green); }
         .station-node.transmitting { border-color: var(--blue); color: var(--blue); box-shadow: 0 0 15px rgba(88, 166, 255, 0.5); }
         .station-node.collision { border-color: var(--red); color: var(--red); box-shadow: 0 0 15px rgba(248, 81, 73, 0.7); animation: shake 0.1s infinite; }
+        .station-node.jamming { border-color: var(--purple); color: var(--purple); box-shadow: 0 0 20px rgba(188, 140, 255, 0.9); animation: strobe 0.1s infinite; }
         .station-node.backoff { border-color: var(--yellow); color: var(--yellow); }
         .station-node.success { border-color: var(--green); color: var(--green); box-shadow: 0 0 15px rgba(63, 185, 80, 0.5); }
         .station-node.received { border-color: var(--cyan); color: var(--cyan); box-shadow: 0 0 15px rgba(57, 210, 192, 0.5); }
@@ -40,6 +43,7 @@
         .log-terminal .backoff { color: var(--yellow); }
         .log-terminal .received { color: var(--cyan); font-weight: bold; }
         .log-terminal .aborting { color: var(--red); }
+        .log-terminal .jamming { color: var(--purple); font-weight: bold; }
         
         /* Channel Log */
         .channel-log { height: 150px; }
@@ -49,6 +53,7 @@
         .stat-badge.green { background: rgba(63, 185, 80, 0.15); color: var(--green); border: 1px solid rgba(63, 185, 80, 0.3); }
         .stat-badge.red { background: rgba(248, 81, 73, 0.15); color: var(--red); border: 1px solid rgba(248, 81, 73, 0.3); }
         .stat-badge.blue { background: rgba(88, 166, 255, 0.15); color: var(--blue); border: 1px solid rgba(88, 166, 255, 0.3); }
+        .stat-badge.purple { background: rgba(188, 140, 255, 0.15); color: var(--purple); border: 1px solid rgba(188, 140, 255, 0.3); }
         
         /* Status Indicator */
         .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; }
@@ -352,8 +357,13 @@
             statusBadge.textContent = 'COLLISION!';
             stats.collisions++;
             document.getElementById('statCollisions').textContent = 'Collisions: ' + stats.collisions;
+        } else if (data.state === 'JAMMING') {
+            statusBadge.className = 'stat-badge purple';
+            statusBadge.style = '';
+            statusBadge.textContent = 'JAMMING!';
         } else if (data.state === 'IDLE') {
             statusBadge.className = 'stat-badge green';
+            statusBadge.style = ''; // Reset custom inline styles
             statusBadge.textContent = 'IDLE';
         } else if (data.state === 'FINISHED') {
             statusBadge.className = 'stat-badge green';
@@ -385,6 +395,7 @@
             'TRANSMITTING': { cls: 'blue', label: 'TX', nodeCls: 'transmitting' },
             'COLLISION': { cls: 'red', label: 'COLLIDED', nodeCls: 'collision' },
             'ABORTING': { cls: 'red', label: 'ABORTING', nodeCls: 'collision' },
+            'JAMMING': { cls: 'purple', label: 'JAMMING', nodeCls: 'jamming' },
             'SUCCESS': { cls: 'green', label: 'SUCCESS', nodeCls: 'success' },
             'BACKOFF': { cls: 'blue', label: 'BACKOFF', nodeCls: 'backoff' },
             'RECEIVED': { cls: 'green', label: 'RECEIVED', nodeCls: 'received' },
