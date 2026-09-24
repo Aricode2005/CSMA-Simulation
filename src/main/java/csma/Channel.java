@@ -27,7 +27,7 @@ public class Channel {
             txInCurrentPeriod = 0;
             busyStartTime = clock.getTick();
             framesInTransit.clear();
-            if (SimClock.isLiveMode) {
+            if (SimClock.isLiveMode || SimClock.isVisualBatchMode) {
                 System.out.println("[WS] {\"type\": \"CHANNEL\", \"state\": \"BUSY\", \"msg\": \"Channel is now BUSY.\"}");
                 System.out.flush();
             }
@@ -38,7 +38,7 @@ public class Channel {
         
         if (txInCurrentPeriod == 2) {
             collisions++;
-            if (SimClock.isLiveMode) {
+            if (SimClock.isLiveMode || SimClock.isVisualBatchMode) {
                 System.out.println("[WS] {\"type\": \"CHANNEL\", \"state\": \"COLLISION\", \"msg\": \"COLLISION DETECTED on the wire!\"}");
                 System.out.flush();
             }
@@ -56,7 +56,7 @@ public class Channel {
             
             busyStartTime = -1;
             framesInTransit.clear();
-            if (jammingCount == 0 && SimClock.isLiveMode) {
+            if (jammingCount == 0 && (SimClock.isLiveMode || SimClock.isVisualBatchMode)) {
                 System.out.println("[WS] {\"type\": \"CHANNEL\", \"state\": \"IDLE\", \"msg\": \"Channel is now IDLE.\"}");
                 System.out.flush();
             }
@@ -87,7 +87,7 @@ public class Channel {
     
     public synchronized void startJamming() {
         if (jammingCount == 0) {
-            if (SimClock.isLiveMode) {
+            if (SimClock.isLiveMode || SimClock.isVisualBatchMode) {
                 System.out.println("[WS] {\"type\": \"CHANNEL\", \"state\": \"JAMMING\", \"msg\": \"High-voltage JAM SIGNAL broadcasting on the wire!\"}");
                 System.out.flush();
             }
@@ -98,7 +98,7 @@ public class Channel {
     public synchronized void stopJamming() {
         jammingCount--;
         if (jammingCount == 0 && transmittingCount == 0) {
-            if (SimClock.isLiveMode) {
+            if (SimClock.isLiveMode || SimClock.isVisualBatchMode) {
                 System.out.println("[WS] {\"type\": \"CHANNEL\", \"state\": \"IDLE\", \"msg\": \"Channel is now IDLE.\"}");
                 System.out.flush();
             }

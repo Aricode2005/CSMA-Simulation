@@ -77,8 +77,8 @@ async def start_live(req: LiveStartRequest):
     asyncio.create_task(run_java_live())
     return {"message": f"Simulation started: {req.numStations} stations, {req.strategy}, CD={'ON' if req.useCD else 'OFF'}"}
 
-@app.post("/api/run-batch")
-async def run_batch():
+@app.post("/api/run-exp/{exp_id}")
+async def run_experiment(exp_id: int):
     try:
         compile_result = subprocess.run(
             'javac src/main/java/csma/*.java src/main/java/csma/strategy/*.java',
@@ -87,13 +87,11 @@ async def run_batch():
         if compile_result.returncode != 0:
             return JSONResponse(status_code=500, content={"error": "Compilation failed: " + compile_result.stderr})
 
-        # Launch Java batch ASYNCHRONOUSLY and stream output to browser
         async def run_batch_stream():
-            await broadcast_ws('{"type": "BATCH_LOG", "msg": "Compiling Java code... Done."}')
-            await broadcast_ws('{"type": "BATCH_LOG", "msg": "Starting batch simulation engine..."}')
+            await broadcast_ws(f'{{"type": "BATCH_LOG", "exp_id": {exp_id}, "msg": "Starting Experiment {exp_id}..."}}')
             
             process = await asyncio.create_subprocess_exec(
-                "java", "-cp", "src/main/java", "csma.Simulator",
+                "java", "-cp", "src/main/java", "csma.Simulator", f"EXP{exp_id}",
                 stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
             )
             
@@ -102,28 +100,30 @@ async def run_batch():
                 if not line:
                     break
                 text = line.decode('utf-8').strip()
-                if text:
+                if text.startswith("[WS]"):
+                    json_data = text[5:].strip()
+                    await broadcast_ws(json_data)
+                elif text:
                     safe = text.replace('\\', '\\\\').replace('"', '\\"')
-                    await broadcast_ws('{"type": "BATCH_LOG", "msg": "' + safe + '"}')
+                    await broadcast_ws(f'{{"type": "BATCH_LOG", "exp_id": {exp_id}, "msg": "{safe}"}}')
             
             await process.wait()
-            
-            await broadcast_ws('{"type": "BATCH_LOG", "msg": "Java simulation finished. Generating plots with Python..."}')
+            await broadcast_ws(f'{{"type": "BATCH_LOG", "exp_id": {exp_id}, "msg": "Java simulation finished. Generating plots with Python..."}}')
             
             plot_proc = await asyncio.create_subprocess_exec(
-                sys.executable, "plot_results.py",
+                sys.executable, "plot_results.py", str(exp_id),
                 stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
             )
             stdout, _ = await plot_proc.communicate()
             for pline in stdout.decode('utf-8').strip().split('\n'):
                 if pline.strip():
                     safe = pline.strip().replace('\\', '\\\\').replace('"', '\\"')
-                    await broadcast_ws('{"type": "BATCH_LOG", "msg": "' + safe + '"}')
+                    await broadcast_ws(f'{{"type": "BATCH_LOG", "exp_id": {exp_id}, "msg": "{safe}"}}')
             
-            await broadcast_ws('{"type": "BATCH_DONE", "msg": "All experiments completed! Tables and plots ready."}')
+            await broadcast_ws(f'{{"type": "BATCH_DONE", "exp_id": {exp_id}, "msg": "Experiment {exp_id} completed!"}}')
         
         asyncio.create_task(run_batch_stream())
-        return {"message": "Batch experiments started. Watch the progress log below..."}
+        return {"message": f"Experiment {exp_id} started."}
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 

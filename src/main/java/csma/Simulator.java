@@ -81,20 +81,47 @@ public class Simulator {
     }
 
     public static void main(String[] args) {
-        if (args.length > 0 && args[0].equals("LIVE")) {
-            runLiveSimulation(args);
-            return;
+        if (args.length > 0) {
+            if (args[0].equals("LIVE")) {
+                runLiveSimulation(args);
+                return;
+            } else if (args[0].equals("EXP1")) {
+                SimClock.isVisualBatchMode = true;
+                runExperiment1();
+                return;
+            } else if (args[0].equals("EXP2")) {
+                SimClock.isVisualBatchMode = true;
+                runExperiment2();
+                return;
+            } else if (args[0].equals("EXP3")) {
+                SimClock.isVisualBatchMode = true;
+                runExperiment3();
+                return;
+            }
         }
 
         System.out.println("Starting CSMA Simulation with LLD Strategy Pattern...");
+        runExperiment1();
+        runExperiment2();
+        runExperiment3();
+        System.out.println("\nSimulation completed. Results saved to CSV files.");
+    }
+
+    private static void setupVisualBatch(int N) {
+        if (SimClock.isVisualBatchMode) {
+            System.out.println("[WS] {\"type\": \"SETUP\", \"numStations\": " + N + "}");
+            System.out.flush();
+        }
+    }
+
+    private static void runExperiment1() {
         int frames = readFramesFromFile("workload.txt");
-        System.out.println("Loaded workload: " + frames + " frames per station.");
-        
         System.out.println("Running Experiment 1: p-Persistent (N=10), varying p...");
         try (PrintWriter out = new PrintWriter(new FileWriter("experiment1_p_persistent.csv"))) {
             out.println("p,Collisions,AvgDelay,Throughput");
             int fixedN = 10;
             double[] pValues = {0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0};
+            setupVisualBatch(fixedN);
             for (double p : pValues) {
                 Result res = runExperiment(new PPersistentStrategy(p), false, fixedN, frames);
                 out.printf("%.2f,%d,%.2f,%.4f\n", p, res.collisions, res.avgDelay, res.throughput);
@@ -103,7 +130,10 @@ public class Simulator {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
 
+    private static void runExperiment2() {
+        int frames = readFramesFromFile("workload.txt");
         System.out.println("\nRunning Experiment 2: All schemes, varying N...");
         MacStrategy[] strategies = {
             new NonPersistentStrategy(),
@@ -120,6 +150,7 @@ public class Simulator {
             for (int i = 0; i < strategies.length; i++) {
                 System.out.println("Testing strategy: " + strategyNames[i]);
                 for (int n : nValues) {
+                    setupVisualBatch(n);
                     Result res = runExperiment(strategies[i], useCDFlags[i], n, frames);
                     out.printf("%s,%d,%d,%.2f,%.4f\n", strategyNames[i], n, res.collisions, res.avgDelay, res.throughput);
                     System.out.printf("  N=%d -> Collisions: %d, Avg Delay: %.2f, Throughput: %.4f\n", n, res.collisions, res.avgDelay, res.throughput);
@@ -128,13 +159,17 @@ public class Simulator {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
 
+    private static void runExperiment3() {
+        int frames = readFramesFromFile("workload.txt");
         System.out.println("\nRunning Experiment 3: Tfr vs Tp constraint...");
         try (PrintWriter out = new PrintWriter(new FileWriter("experiment3_tfr_vs_tp.csv"))) {
             out.println("Tfr,UndetectedCollisions,Throughput");
             Station.PROPAGATION_DELAY = 10;
             int[] tfrValues = {5, 10, 15, 18, 20, 22, 25, 30}; // 2*Tp = 20
             MacStrategy csmaCd = new CsmaCdStrategy();
+            setupVisualBatch(10);
             for (int tfr : tfrValues) {
                 Station.TRANSMISSION_TIME = tfr;
                 Result res = runExperiment(csmaCd, true, 10, frames);
@@ -144,8 +179,6 @@ public class Simulator {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        
-        System.out.println("\nSimulation completed. Results saved to CSV files.");
     }
     
     private static void runLiveSimulation(String[] args) {

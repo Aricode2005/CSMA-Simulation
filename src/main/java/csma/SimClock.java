@@ -5,6 +5,7 @@ public class SimClock {
     private int activeThreads = 0;
     private int waitingThreads = 0;
     public static boolean isLiveMode = false;
+    public static boolean isVisualBatchMode = false;
     public static long liveSpeedMs = 100;
     
     public synchronized void registerThread() { 
@@ -36,11 +37,13 @@ public class SimClock {
         tick++;
         waitingThreads = 0;
         
-        // If we are showing this visually on the Web UI, slow down time!
-        if (isLiveMode) {
+        // If we are showing this visually on the Web UI
+        if (isLiveMode || isVisualBatchMode) {
             System.out.println("[WS] {\"type\": \"TICK\", \"tick\": " + tick + "}");
             System.out.flush();
-            try { Thread.sleep(liveSpeedMs); } catch (InterruptedException e) {}
+            if (isLiveMode) {
+                try { Thread.sleep(liveSpeedMs); } catch (InterruptedException e) {}
+            }
         }
         
         notifyAll();

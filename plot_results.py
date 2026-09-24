@@ -156,7 +156,17 @@ def plot_experiment3():
     print("Experiment 3 plots saved.")
 
 if __name__ == "__main__":
-    plot_experiment1()
-    plot_experiment2()
-    plot_experiment3()
-    print("All plots generated successfully!")
+    if len(sys.argv) > 1:
+        exp_id = sys.argv[1]
+        if exp_id == "1":
+            plot_experiment1()
+        elif exp_id == "2":
+            plot_experiment2()
+        elif exp_id == "3":
+            plot_experiment3()
+        print(f"Experiment {exp_id} plots generated successfully!")
+    else:
+        plot_experiment1()
+        plot_experiment2()
+        plot_experiment3()
+        print("All plots generated successfully!")

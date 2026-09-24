@@ -147,16 +147,6 @@
                 </div>
             </div>
 
-            <!-- Batch Analysis -->
-            <div class="card">
-                <div class="card-header text-white"><i class="bi bi-graph-up"></i> Batch Experiments</div>
-                <div class="card-body">
-                    <button class="btn btn-outline-info btn-sm w-100 mb-2" onclick="runBatch()" id="btnBatch">
-                        <i class="bi bi-lightning-fill"></i> Run All Experiments &amp; Generate Plots
-                    </button>
-                    <div id="batchStatus" class="small text-muted text-center"></div>
-                </div>
-            </div>
         </div>
         
         <!-- CENTER: Wire + Stations -->
@@ -194,26 +184,20 @@
     <div id="experimentResults" class="mt-4">
         <hr style="border-color: var(--border);">
         <h3 class="hero-title text-center mb-3"><i class="bi bi-journal-richtext"></i> Experiment Results &amp; Analysis</h3>
-        
-        <div class="text-center mb-4">
-            <button class="btn btn-lg btn-info px-5 py-3 btn-glow" onclick="runBatch()" id="btnBatchMain" style="font-size: 18px;">
-                <i class="bi bi-lightning-fill"></i> Run All Experiments &amp; Generate Plots
-            </button>
-            <div id="batchStatusMain" class="mt-2" style="font-size: 14px; color: #8b949e;"></div>
-        </div>
-        
-        <!-- Batch Progress Log -->
-        <div class="card mb-4" id="batchLogCard" style="display:none;">
-            <div class="card-header text-white"><i class="bi bi-terminal"></i> Experiment Progress Log</div>
-            <div class="card-body p-0">
-                <div id="batchLog" class="log-terminal" style="height: 250px;"></div>
-            </div>
-        </div>
 
         <!-- Experiment 1 -->
         <div class="card mb-4">
             <div class="card-header text-white" style="font-size: 16px;"><i class="bi bi-1-circle"></i> Experiment 1: Effect of Probability (p) on p-Persistent CSMA</div>
             <div class="card-body">
+                <div class="text-center mb-4">
+                    <button class="btn btn-info px-4 py-2" onclick="runExperiment(1)" id="btnExp1">
+                        <i class="bi bi-play-fill"></i> Run Experiment 1
+                    </button>
+                    <div id="statusExp1" class="mt-2 small text-muted"></div>
+                </div>
+                
+                <div class="log-terminal mb-4" id="logExp1" style="height: 150px; display: none;"></div>
+                
                 <div class="exp-desc mb-4">
                     <h6 style="color: var(--blue);"><i class="bi bi-bullseye"></i> Objective</h6>
                     <p>Evaluate how the transmission probability <code>p</code> in p-Persistent CSMA affects network performance metrics: <strong>Throughput</strong>, <strong>Average Delay</strong>, and <strong>Collisions</strong>.</p>
@@ -245,6 +229,15 @@
         <div class="card mb-4">
             <div class="card-header text-white" style="font-size: 16px;"><i class="bi bi-2-circle"></i> Experiment 2: Comparing All CSMA Strategies Under Increasing Load</div>
             <div class="card-body">
+                <div class="text-center mb-4">
+                    <button class="btn btn-info px-4 py-2" onclick="runExperiment(2)" id="btnExp2">
+                        <i class="bi bi-play-fill"></i> Run Experiment 2
+                    </button>
+                    <div id="statusExp2" class="mt-2 small text-muted"></div>
+                </div>
+                
+                <div class="log-terminal mb-4" id="logExp2" style="height: 150px; display: none;"></div>
+                
                 <div class="exp-desc green-border mb-4">
                     <h6 style="color: var(--green);"><i class="bi bi-bullseye"></i> Objective</h6>
                     <p>Compare the performance of all four MAC strategies &mdash; <strong>Non-Persistent</strong>, <strong>1-Persistent</strong>, <strong>p-Persistent (p=0.1)</strong>, and <strong>CSMA/CD</strong> &mdash; as the number of competing stations on the shared bus increases from 2 to 30.</p>
@@ -276,6 +269,15 @@
         <div class="card mb-4">
             <div class="card-header text-white" style="font-size: 16px;"><i class="bi bi-3-circle"></i> Experiment 3: Validating Frame Size Constraint (Tfr &ge; 2*Tp)</div>
             <div class="card-body">
+                <div class="text-center mb-4">
+                    <button class="btn btn-info px-4 py-2" onclick="runExperiment(3)" id="btnExp3">
+                        <i class="bi bi-play-fill"></i> Run Experiment 3
+                    </button>
+                    <div id="statusExp3" class="mt-2 small text-muted"></div>
+                </div>
+                
+                <div class="log-terminal mb-4" id="logExp3" style="height: 150px; display: none;"></div>
+                
                 <div class="exp-desc mb-4" style="border-left-color: var(--purple);">
                     <h6 style="color: var(--purple);"><i class="bi bi-bullseye"></i> Objective</h6>
                     <p>Demonstrate the fundamental rule of CSMA/CD: a station can only detect a collision if it is still transmitting when the collision signal propagates back to it. Therefore, the frame transmission time (<strong>T<sub>fr</sub></strong>) must be at least twice the maximum propagation delay (<strong>2 * T<sub>p</sub></strong>).</p>
@@ -367,12 +369,16 @@
             } else if (data.type === 'STATION') {
                 handleStationEvent(data);
             } else if (data.type === 'TICK') {
-                document.getElementById('statTick').textContent = 'Tick: ' + data.tick;
+                if (data.tick % 5 === 0) {
+                    document.getElementById('statTick').textContent = 'Tick: ' + data.tick;
+                }
+            } else if (data.type === 'SETUP') {
+                createStationPanels(data.numStations);
             } else if (data.type === 'BATCH_LOG') {
-                handleBatchLog(data.msg, false);
+                handleBatchLog(data.exp_id, data.msg, false);
             } else if (data.type === 'BATCH_DONE') {
-                handleBatchLog(data.msg, true);
-                onBatchComplete();
+                handleBatchLog(data.exp_id, data.msg, true);
+                onBatchComplete(data.exp_id);
             }
         };
         
@@ -419,6 +425,10 @@
         const time = new Date().toLocaleTimeString();
         p.textContent = `[${time}] ${data.msg}`;
         log.appendChild(p);
+        
+        while (log.childElementCount > 35) {
+            log.removeChild(log.firstChild);
+        }
         log.scrollTop = log.scrollHeight;
     }
     
@@ -467,6 +477,10 @@
         const time = new Date().toLocaleTimeString();
         p.textContent = `[${time}] ${data.msg}`;
         logDiv.appendChild(p);
+        
+        while (logDiv.childElementCount > 25) {
+            logDiv.removeChild(logDiv.firstChild);
+        }
         logDiv.scrollTop = logDiv.scrollHeight;
     }
 
@@ -519,11 +533,10 @@
         connectWebSocket();
     });
 
-    function handleBatchLog(msg, isDone) {
-        const logCard = document.getElementById('batchLogCard');
-        const batchLog = document.getElementById('batchLog');
-        if (logCard) logCard.style.display = 'block';
+    function handleBatchLog(exp_id, msg, isDone) {
+        const batchLog = document.getElementById('logExp' + exp_id);
         if (batchLog) {
+            batchLog.style.display = 'block';
             const p = document.createElement('p');
             p.className = isDone ? 'success' : 'transmitting';
             const time = new Date().toLocaleTimeString();
@@ -533,88 +546,73 @@
         }
     }
 
-    function onBatchComplete() {
-        const btn1 = document.getElementById('btnBatch');
-        const btn2 = document.getElementById('btnBatchMain');
-        const status1 = document.getElementById('batchStatus');
-        const status2 = document.getElementById('batchStatusMain');
+    function onBatchComplete(exp_id) {
+        const btn = document.getElementById('btnExp' + exp_id);
+        const status = document.getElementById('statusExp' + exp_id);
         
-        if (btn1) btn1.disabled = false;
-        if (btn2) btn2.disabled = false;
+        if (btn) btn.disabled = false;
         
-        const okMsg = '<span style="color: var(--green);">&#10003; All experiments finished! Results loaded below.</span>';
-        if (status1) status1.innerHTML = okMsg;
-        if (status2) status2.innerHTML = okMsg;
+        const okMsg = '<span style="color: var(--green);">&#10003; Experiment finished! Results loaded below.</span>';
+        if (status) status.innerHTML = okMsg;
         
         const t = Date.now();
         
-        // Show Experiment 1 plots
-        showImage('imgExp1Throughput', '/api/plot/exp1_throughput?t=' + t);
-        showImage('imgExp1Delay', '/api/plot/exp1_delay?t=' + t);
-        showImage('imgExp1Collisions', '/api/plot/exp1_collisions?t=' + t);
-        
-        // Show Experiment 2 plots
-        showImage('imgExp2Throughput', '/api/plot/exp2_throughput?t=' + t);
-        showImage('imgExp2Delay', '/api/plot/exp2_delay?t=' + t);
-        showImage('imgExp2Collisions', '/api/plot/exp2_collisions?t=' + t);
-        
-        // Show Experiment 3 plots
-        showImage('imgExp3Undetected', '/api/plot/exp3_undetected?t=' + t);
-        showImage('imgExp3Throughput', '/api/plot/exp3_throughput?t=' + t);
-        
-        // Load CSV tables
-        loadCSVTable('experiment1_p_persistent', 'tableExp1');
-        loadCSVTable('experiment2_varying_N', 'tableExp2');
-        loadCSVTable('experiment3_tfr_vs_tp', 'tableExp3');
+        if (exp_id === 1) {
+            showImage('imgExp1Throughput', '/api/plot/exp1_throughput?t=' + t);
+            showImage('imgExp1Delay', '/api/plot/exp1_delay?t=' + t);
+            showImage('imgExp1Collisions', '/api/plot/exp1_collisions?t=' + t);
+            loadCSVTable('experiment1_p_persistent', 'tableExp1');
+        } else if (exp_id === 2) {
+            showImage('imgExp2Throughput', '/api/plot/exp2_throughput?t=' + t);
+            showImage('imgExp2Delay', '/api/plot/exp2_delay?t=' + t);
+            showImage('imgExp2Collisions', '/api/plot/exp2_collisions?t=' + t);
+            loadCSVTable('experiment2_varying_N', 'tableExp2');
+        } else if (exp_id === 3) {
+            showImage('imgExp3Undetected', '/api/plot/exp3_undetected?t=' + t);
+            showImage('imgExp3Throughput', '/api/plot/exp3_throughput?t=' + t);
+            loadCSVTable('experiment3_tfr_vs_tp', 'tableExp3');
+        }
     }
     
-    function runBatch() {
-        const btn1 = document.getElementById('btnBatch');
-        const btn2 = document.getElementById('btnBatchMain');
-        const status1 = document.getElementById('batchStatus');
-        const status2 = document.getElementById('batchStatusMain');
+    function runExperiment(exp_id) {
+        const btn = document.getElementById('btnExp' + exp_id);
+        const status = document.getElementById('statusExp' + exp_id);
         
-        if (btn1) btn1.disabled = true;
-        if (btn2) btn2.disabled = true;
+        if (btn) btn.disabled = true;
         
-        const spinMsg = '<span class="spinner-border spinner-border-sm me-2"></span> Running batch experiments... Live logs streaming below.';
-        if (status1) status1.innerHTML = spinMsg;
-        if (status2) status2.innerHTML = spinMsg;
+        const spinMsg = '<span class="spinner-border spinner-border-sm me-2"></span> Running experiment... Live logs streaming above and below.';
+        if (status) status.innerHTML = spinMsg;
         
         // Reset and show progress terminal
-        const batchLog = document.getElementById('batchLog');
-        if (batchLog) batchLog.innerHTML = '';
-        const logCard = document.getElementById('batchLogCard');
-        if (logCard) logCard.style.display = 'block';
-        logCard.scrollIntoView({ behavior: 'smooth' });
-
+        const batchLog = document.getElementById('logExp' + exp_id);
+        if (batchLog) {
+            batchLog.innerHTML = '';
+            batchLog.style.display = 'block';
+            batchLog.scrollIntoView({ behavior: 'smooth' });
+        }
         if (!ws || ws.readyState !== WebSocket.OPEN) {
             connectWebSocket();
         }
         
-        fetch('/api/run-batch', { method: 'POST' })
+        fetch('/api/run-exp/' + exp_id, { method: 'POST' })
         .then(r => r.json())
         .then(data => {
             if (data.error) {
-                if (btn1) btn1.disabled = false;
-                if (btn2) btn2.disabled = false;
-                const errMsg = 'Error: ' + data.error;
-                if (status1) status1.textContent = errMsg;
-                if (status2) status2.textContent = errMsg;
+                if (btn) btn.disabled = false;
+                if (status) status.textContent = 'Error: ' + data.error;
             }
         }).catch(err => {
-            if (btn1) btn1.disabled = false;
-            if (btn2) btn2.disabled = false;
-            const errMsg = 'Error: ' + err;
-            if (status1) status1.textContent = errMsg;
-            if (status2) status2.textContent = errMsg;
+            if (btn) btn.disabled = false;
+            if (status) status.textContent = 'Error: ' + err;
         });
     }
     
     function showImage(id, src) {
         const img = document.getElementById(id);
-        img.src = src;
-        img.style.display = 'block';
+        if (img) {
+            img.src = src;
+            img.style.display = 'block';
+        }
     }
     
     function loadCSVTable(csvName, tableId) {

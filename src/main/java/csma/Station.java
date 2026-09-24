@@ -68,7 +68,7 @@ public class Station extends Thread {
     }
 
     public void log(String state, String msg) {
-        if (SimClock.isLiveMode) {
+        if (SimClock.isLiveMode || SimClock.isVisualBatchMode) {
             String json = String.format("{\"type\": \"STATION\", \"id\": \"%s\", \"state\": \"%s\", \"msg\": \"%s\"}", 
                                         this.address, state, msg.replace("\"", "\\\""));
             System.out.println("[WS] " + json);
@@ -119,7 +119,7 @@ public class Station extends Thread {
                 
                 framesSent++;
 
-                int nextArrival = SimClock.isLiveMode ? (random.nextInt(10) + 5) : (random.nextInt(50) + 10);
+                int nextArrival = (SimClock.isLiveMode || SimClock.isVisualBatchMode) ? (random.nextInt(10) + 5) : (random.nextInt(50) + 10);
                 for (int i = 0; i < nextArrival; i++) {
                     clock.waitForNextTick();
                 }
