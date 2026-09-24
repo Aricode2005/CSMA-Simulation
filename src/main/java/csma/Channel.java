@@ -80,6 +80,10 @@ public class Channel {
         return txInCurrentPeriod > 1;
     }
     
+    public synchronized boolean isJamming() {
+        return jammingCount > 0;
+    }
+    
     // Simulates reading the physical voltage / signal count on the wire
     public synchronized int getTransmittingCount() {
         return transmittingCount;

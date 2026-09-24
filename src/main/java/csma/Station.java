@@ -160,15 +160,20 @@ public class Station extends Thread {
             clock.waitForNextTick();
             
             // hardware simulation: Listen while talking (Read back voltage from the wire)
-            int signalsOnWire = channel.getTransmittingCount();
-            if (signalsOnWire > 1) {
+            // Jamming also counts as a collision signal
+            if (channel.getTransmittingCount() > 1 || channel.isJamming()) {
                 collided = true;
-                // If we are still transmitting when the signal reaches us, we detect it
-                if (i >= ticksToDetect) {
+                // In a physical wire, the collision takes up to 2*Tp to reach us.
+                // If our frame is too small (Tfr < 2*Tp), we might finish transmitting BEFORE the collision reaches us.
+                // We model this constraint: you only detect it if your frame is long enough to cover the worst-case round trip.
+                if (TRANSMISSION_TIME >= ticksToDetect) {
                     detected = true;
-                    log("ABORTING", "Voltage spike detected! Expected 1 TX signal, but sensed " + signalsOnWire + " signals. Aborting.");
-                    break; 
+                    log("ABORTING", "Voltage spike / Jamming detected! Aborting.");
+                } else {
+                    detected = false;
+                    // We don't log aborting because the station physically finished sending before the collision arrived, so it didn't know.
                 }
+                break; 
             }
         }
         
