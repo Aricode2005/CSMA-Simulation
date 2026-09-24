@@ -127,6 +127,17 @@
                         <label class="form-label small text-muted">Number of Stations</label>
                         <input type="number" id="numStations" class="form-control form-control-sm" value="3" min="2" max="10">
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label small text-muted">Animation Speed</label>
+                        <select id="simSpeed" class="form-select form-select-sm">
+                            <option value="0.25">0.25x (Very Slow)</option>
+                            <option value="0.5">0.5x (Slow)</option>
+                            <option value="1.0" selected>1.0x (Normal)</option>
+                            <option value="1.5">1.5x (Fast)</option>
+                            <option value="2.0">2.0x (Very Fast)</option>
+                            <option value="5.0">5.0x (Ultra Fast)</option>
+                        </select>
+                    </div>
                     <button id="btnStart" class="btn btn-success btn-sm w-100 btn-glow mb-2" onclick="startSimulation()">
                         <i class="bi bi-play-fill"></i> Start Live Simulation
                     </button>
@@ -327,6 +338,8 @@
                 handleChannelEvent(data);
             } else if (data.type === 'STATION') {
                 handleStationEvent(data);
+            } else if (data.type === 'TICK') {
+                document.getElementById('statTick').textContent = 'Tick: ' + data.tick;
             } else if (data.type === 'BATCH_LOG') {
                 handleBatchLog(data.msg, false);
             } else if (data.type === 'BATCH_DONE') {
@@ -434,11 +447,13 @@
         const strategy = document.getElementById('strategy').value;
         const useCD = document.getElementById('useCD').value === 'true';
         const p = parseFloat(document.getElementById('pValue').value);
+        const simSpeed = parseFloat(document.getElementById('simSpeed').value);
         
         // Reset
         stats = { success: 0, collisions: 0, tick: 0 };
         document.getElementById('statSuccess').textContent = 'Success: 0';
         document.getElementById('statCollisions').textContent = 'Collisions: 0';
+        document.getElementById('statTick').textContent = 'Tick: 0';
         document.getElementById('channelLog').innerHTML = '';
         
         // Create UI
@@ -454,7 +469,7 @@
             fetch('/api/start-live', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ strategy, useCD, p, numStations: n })
+                body: JSON.stringify({ strategy, useCD, p, numStations: n, speedMultiplier: simSpeed })
             }).then(r => r.json()).then(data => {
                 const log = document.getElementById('channelLog');
                 const p2 = document.createElement('p');
