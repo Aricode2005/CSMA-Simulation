@@ -14,7 +14,6 @@ class LiveStartRequest(BaseModel):
     useCD: bool
     p: float
     numStations: int
-    speedMultiplier: float = 1.0
 
 active_connections: list[WebSocket] = []
 live_process = None
@@ -61,7 +60,7 @@ async def start_live(req: LiveStartRequest):
         global live_process
         live_process = await asyncio.create_subprocess_exec(
             "java", "-cp", "src/main/java", "csma.Simulator", "LIVE",
-            req.strategy, str(req.useCD).lower(), str(req.p), str(req.numStations), str(req.speedMultiplier),
+            req.strategy, str(req.useCD).lower(), str(req.p), str(req.numStations),
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
         while True:

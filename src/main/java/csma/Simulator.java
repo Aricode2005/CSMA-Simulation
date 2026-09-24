@@ -130,13 +130,6 @@ public class Simulator {
         boolean useCD = Boolean.parseBoolean(args[2]);
         double pValue = Double.parseDouble(args[3]);
         int numStations = Integer.parseInt(args[4]);
-        double speedMultiplier = 1.0;
-        if (args.length > 5) {
-            speedMultiplier = Double.parseDouble(args[5]);
-        }
-        
-        // Base speed 200ms for 1.0x (a good middle ground)
-        SimClock.liveSpeedMs = (long) (200.0 / speedMultiplier);
         
         MacStrategy strategy;
         if (strategyName.equals("NON")) {
