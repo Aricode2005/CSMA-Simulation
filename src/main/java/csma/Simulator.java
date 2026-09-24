@@ -135,7 +135,8 @@ public class Simulator {
             speedMultiplier = Double.parseDouble(args[5]);
         }
         
-        SimClock.liveSpeedMs = (long) (100.0 / speedMultiplier);
+        // Base speed 400ms for 1.0x so animations are much clearer
+        SimClock.liveSpeedMs = (long) (400.0 / speedMultiplier);
         
         MacStrategy strategy;
         if (strategyName.equals("NON")) {
@@ -147,8 +148,9 @@ public class Simulator {
         }
 
         // Run experiment (only 5 frames per station so it doesn't take forever visually)
-        runExperiment(strategy, useCD, numStations, 5);
-        System.out.println("[WS] {\"type\": \"CHANNEL\", \"state\": \"FINISHED\", \"msg\": \"Live simulation completed!\"}");
+        Result res = runExperiment(strategy, useCD, numStations, 5);
+        String metrics = String.format("Avg Delay: %.2f slots | Throughput: %.4f", res.avgDelay, res.throughput);
+        System.out.println("[WS] {\"type\": \"CHANNEL\", \"state\": \"FINISHED\", \"msg\": \"Live simulation completed! " + metrics + "\"}");
         System.exit(0);
     }
 }

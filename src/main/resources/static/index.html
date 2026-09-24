@@ -53,6 +53,7 @@
         .stat-badge.green { background: rgba(63, 185, 80, 0.15); color: var(--green); border: 1px solid rgba(63, 185, 80, 0.3); }
         .stat-badge.red { background: rgba(248, 81, 73, 0.15); color: var(--red); border: 1px solid rgba(248, 81, 73, 0.3); }
         .stat-badge.blue { background: rgba(88, 166, 255, 0.15); color: var(--blue); border: 1px solid rgba(88, 166, 255, 0.3); }
+        .stat-badge.cyan { background: rgba(57, 210, 192, 0.15); color: var(--cyan); border: 1px solid rgba(57, 210, 192, 0.3); }
         .stat-badge.purple { background: rgba(188, 140, 255, 0.15); color: var(--purple); border: 1px solid rgba(188, 140, 255, 0.3); }
         
         /* Status Indicator */
@@ -178,6 +179,14 @@
                     <span id="channelStatus" class="stat-badge green">IDLE</span>
                 </div>
                 <div class="card-body">
+                    <!-- Legend -->
+                    <div class="d-flex justify-content-center flex-wrap gap-2 mb-4">
+                        <span class="stat-badge green">IDLE / SUCCESS</span>
+                        <span class="stat-badge blue">TX / BACKOFF / BUSY</span>
+                        <span class="stat-badge cyan">RECEIVED</span>
+                        <span class="stat-badge red">COLLISION / ABORTING</span>
+                        <span class="stat-badge purple">JAM SIGNAL</span>
+                    </div>
                     <div class="wire-container">
                         <div id="wire" class="wire idle"></div>
                         <div id="stationNodes"></div>
