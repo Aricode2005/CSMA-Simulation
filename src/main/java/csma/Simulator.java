@@ -135,8 +135,8 @@ public class Simulator {
             speedMultiplier = Double.parseDouble(args[5]);
         }
         
-        // Base speed 400ms for 1.0x so animations are much clearer
-        SimClock.liveSpeedMs = (long) (400.0 / speedMultiplier);
+        // Base speed 200ms for 1.0x (a good middle ground)
+        SimClock.liveSpeedMs = (long) (200.0 / speedMultiplier);
         
         MacStrategy strategy;
         if (strategyName.equals("NON")) {
